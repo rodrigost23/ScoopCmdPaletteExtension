@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "ScoopCmdPaletteExtension (Package)": {
+      "commandName": "MsixPackage",
+      "doNotLaunchApp": true
+    },
+    "ScoopCmdPaletteExtension (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
