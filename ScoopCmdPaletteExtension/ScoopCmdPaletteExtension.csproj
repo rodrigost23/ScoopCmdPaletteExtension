@@ -15,7 +15,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <Content Remove="Assets\StoreLogo.png" />
+    <None Remove="Assets\StoreLogo.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CommandPalette.Extensions" />
+    <PackageReference Include="Microsoft.PowerShell.SDK" />
     <PackageReference Include="Microsoft.Windows.CsWinRT" />
     <PackageReference Include="Microsoft.WindowsAppSDK" />
     <PackageReference Include="Microsoft.Web.WebView2" />
