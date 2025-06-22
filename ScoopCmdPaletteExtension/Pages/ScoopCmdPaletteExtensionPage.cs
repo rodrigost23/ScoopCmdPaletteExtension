@@ -12,7 +12,7 @@ namespace ScoopCmdPaletteExtension;
 
 internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, IDisposable
 {
-    private Scoop _scoop = new();
+    private readonly Scoop _scoop = new();
     private IListItem[] _results = [];
 
     public ScoopCmdPaletteExtensionPage()
@@ -20,6 +20,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
         Title = "Scoop";
         Name = "Search";
+        ShowDetails = true;
     }
 
     public void Dispose()
@@ -32,7 +33,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
         return _results.Length > 0 ? _results : [
             new ListItem(new OpenUrlCommand("https://scoop.sh"))
                 {
-                    Title = "Open Scoop home page (2)",
+                    Title = "Open Scoop home page",
                 }
         ];
     }
@@ -73,11 +74,48 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
         {
             IsLoading = true;
             var results = _scoop.SearchAsync(searchText).GetAwaiter().GetResult();
-            return [.. results.Select(r => new ListItem(new InstallCommand(this, _scoop, r))
+
+            return [.. results.Select(result => new ListItem(new InstallCommand(_scoop, result))
             {
-                Title = r.Name,
-                Subtitle = r.Description,
-                Icon = new IconInfo(new Uri(new Uri(r.Homepage), "/favicon.ico").ToString()),
+                Title = result.Name,
+                Subtitle = result.Description,
+                Tags = [
+                    new Tag() {
+                        Text = result.Version,
+                        ToolTip = "Version",
+                    }
+                ],
+                Icon = new IconInfo(new Uri(new Uri(result.Homepage), "/favicon.ico").ToString()),
+                Details = new Details() {
+                    Title = result.Name,
+                    Body = result.Notes,
+                    Metadata = [
+                        new DetailsElement() {
+                            Key = "Repository",
+                            Data = new DetailsLink() {
+                                Text = result.Metadata.OfficialRepository ? $"{_scoop.GetBucketNameFromRepo(result.Metadata.Repository)} ({result.Metadata.Repository})" : result.Metadata.Repository,
+                                Link = new Uri(result.Metadata.Repository),
+                            }
+                        },
+                        new DetailsElement() {
+                            Key = "Homepage",
+                            Data = new DetailsLink() {
+                                Text = result.Homepage,
+                                Link = new Uri(result.Homepage),
+                            }
+                        },
+                        // Only add License tag if result.License is not null or empty
+                        ..(string.IsNullOrEmpty(result.License) ? Array.Empty<DetailsElement>() : [
+                            new DetailsElement() {
+                                Key = "License",
+                                Data = new DetailsLink() {
+                                    Text = result.License,
+                                    Link = new Uri($"https://spdx.org/licenses/{result.License}.html"),
+                                }
+                            }
+                        ]),
+                    ]
+                }
             })];
         }
         catch (Exception ex)
@@ -94,14 +132,12 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
 
     internal partial class InstallCommand : InvokableCommand
     {
-        private readonly DynamicListPage _page;
         private readonly Scoop _scoop;
         private readonly ScoopSearchResultItem _package;
-        public InstallCommand(DynamicListPage page, Scoop scoop, ScoopSearchResultItem package)
+        public InstallCommand(Scoop scoop, ScoopSearchResultItem package)
         {
             Name = "Install";
             Icon = new("\uEBD3");
-            _page = page;
             _scoop = scoop;
             _package = package;
         }
