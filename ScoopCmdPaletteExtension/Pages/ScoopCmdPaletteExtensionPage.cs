@@ -7,6 +7,7 @@ using Microsoft.CommandPalette.Extensions.Toolkit;
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace ScoopCmdPaletteExtension;
 
@@ -54,15 +55,15 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
             return;
         }
 
-        var results = SearchScoop(newSearch);
-
-        _results = results;
-        RaiseItemsChanged(_results.Length);
-
+        SearchScoopAsync(newSearch).ContinueWith(task =>
+        {
+            _results = task.Result;
+            RaiseItemsChanged(_results.Length);
+        });
     }
 
     // Search scoop
-    public IListItem[] SearchScoop(string searchText)
+    public async Task<IListItem[]> SearchScoopAsync(string searchText)
     {
         if (string.IsNullOrEmpty(searchText))
         {
@@ -73,19 +74,23 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
         try
         {
             IsLoading = true;
-            var results = _scoop.SearchAsync(searchText).GetAwaiter().GetResult();
+            var results = await _scoop.SearchAsync(searchText);
 
-            return [.. results.Select(result => new ListItem(new InstallCommand(_scoop, result))
+            return await Task.WhenAll([.. results.Select(async result => new ListItem(new InstallCommand(_scoop, result))
             {
                 Title = result.Name,
                 Subtitle = result.Description,
                 Tags = [
+                    ..result.Metadata.OfficialRepository ? [new Tag() {
+                        Text = await _scoop.GetBucketNameFromRepoAsync(result.Metadata.Repository),
+                        Icon = IconHelpers.FromRelativePath("Assets\\icon_checkmark.svg"),
+                    }] : Array.Empty<Tag>(),
                     new Tag() {
                         Text = result.Version,
                         ToolTip = "Version",
                     }
                 ],
-                Icon = new IconInfo(new Uri(new Uri(result.Homepage), "/favicon.ico").ToString()),
+                Icon = new IconInfo($"https://www.google.com/s2/favicons?domain={Uri.EscapeDataString(result.Homepage)}&sz=24"),
                 Details = new Details() {
                     Title = result.Name,
                     Body = result.Notes,
@@ -93,8 +98,15 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
                         new DetailsElement() {
                             Key = "Repository",
                             Data = new DetailsLink() {
-                                Text = result.Metadata.OfficialRepository ? $"{_scoop.GetBucketNameFromRepo(result.Metadata.Repository)} ({result.Metadata.Repository})" : result.Metadata.Repository,
+                                Text = result.Metadata.OfficialRepository ? await _scoop.GetBucketNameFromRepoAsync(result.Metadata.Repository) : result.Metadata.Repository,
                                 Link = new Uri(result.Metadata.Repository),
+                            }
+                        },
+                        new DetailsElement() {
+                            Key = "File path",
+                            Data = new DetailsLink() {
+                                Text = result.Metadata.FilePath,
+                                Link = new Uri($"{result.Metadata.Repository}/blob/{result.Metadata.Sha}/{result.Metadata.FilePath}"),
                             }
                         },
                         new DetailsElement() {
@@ -110,13 +122,13 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
                                 Key = "License",
                                 Data = new DetailsLink() {
                                     Text = result.License,
-                                    Link = new Uri($"https://spdx.org/licenses/{result.License}.html"),
+                                    Link = !result.License.Contains(',') ? new Uri($"https://spdx.org/licenses/{result.License}.html") : null,
                                 }
                             }
                         ]),
                     ]
                 }
-            })];
+            })]);
         }
         catch (Exception ex)
         {
@@ -169,7 +181,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
 
                 if (bucket == null)
                 {
-                    string bucketName = _scoop.GetBucketNameFromRepo(repository).Result;
+                    string bucketName = _scoop.GetBucketNameFromRepoAsync(repository).GetAwaiter().GetResult();
                     return CommandResult.Confirm(new ConfirmationArgs
                     {
                         Title = $"Bucket \"{bucketName}\" is not installed.",

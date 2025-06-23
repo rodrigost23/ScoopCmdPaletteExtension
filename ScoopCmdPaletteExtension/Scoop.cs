@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.Management.Automation;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace ScoopCmdPaletteExtension
 {
@@ -170,7 +167,7 @@ namespace ScoopCmdPaletteExtension
             return null;
         }
 
-        public async Task<string> GetBucketNameFromRepo(string repository)
+        public async Task<string> GetBucketNameFromRepoAsync(string repository)
         {
             // Check if repository is in official bucket list and return
             var officialBuckets = await GetOfficialBucketsAsync();
@@ -205,7 +202,7 @@ namespace ScoopCmdPaletteExtension
 
         public async Task InstallBucketAsync(string repository, string? name = null)
         {
-            name ??= await GetBucketNameFromRepo(repository);
+            name ??= await GetBucketNameFromRepoAsync(repository);
 
             var officialBuckets = await GetOfficialBucketsAsync();
             string installParam = officialBuckets.ContainsKey(name) ? name : $"{name} {repository}";
@@ -272,6 +269,9 @@ namespace ScoopCmdPaletteExtension
         public string Repository { get; set; } = string.Empty;
         public bool OfficialRepository { get; set; }
         public string FilePath { get; set; } = string.Empty;
+        public int RepositoryStars { get; set; }
+        public string Commited { get; set; } = string.Empty;
+        public string Sha { get; set; } = string.Empty;
     }
 
 
