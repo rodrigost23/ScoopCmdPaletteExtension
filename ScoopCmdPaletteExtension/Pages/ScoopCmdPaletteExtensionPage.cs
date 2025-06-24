@@ -7,6 +7,7 @@ using Microsoft.CommandPalette.Extensions.Toolkit;
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ScoopCmdPaletteExtension;
@@ -15,27 +16,35 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
 {
     private readonly Scoop _scoop = new();
     private IListItem[] _results = [];
+    private readonly Lock _resultsLock = new();
+    private CancellationTokenSource? _searchCancellationTokenSource;
+    IconInfo ScoopIcon { get; } = IconHelpers.FromRelativePath("Assets\\ice_cream_emoji.svg");
 
     public ScoopCmdPaletteExtensionPage()
     {
-        Icon = IconHelpers.FromRelativePath("Assets\\ice_cream_emoji.svg");
+        Icon = ScoopIcon;
         Title = "Scoop";
         Name = "Search";
         ShowDetails = true;
-        EmptyContent = new CommandItem() {
+        EmptyContent = new CommandItem()
+        {
             Title = "Try searching for a Scoop package.",
-            Icon = IconHelpers.FromRelativePath("Assets\\ice_cream_emoji.svg"),
+            Icon = ScoopIcon,
         };
     }
 
     public void Dispose()
     {
         _scoop.Dispose();
+        _searchCancellationTokenSource?.Dispose();
     }
 
     public override IListItem[] GetItems()
     {
-        return _results;
+        lock (_resultsLock)
+        {
+            return _results;
+        }
     }
 
     public override void UpdateSearchText(string oldSearch, string newSearch)
@@ -47,22 +56,37 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
             return;
         }
 
+        _searchCancellationTokenSource?.Cancel();
+
         if (string.IsNullOrEmpty(newSearch))
         {
-            _results = [];
-            RaiseItemsChanged(0);
+            UpdateResults([]);
+            _searchCancellationTokenSource = null;
             return;
         }
 
-        SearchScoopAsync(newSearch).ContinueWith(task =>
+        _searchCancellationTokenSource = new CancellationTokenSource();
+        var token = _searchCancellationTokenSource.Token;
+
+        SearchScoopAsync(newSearch, token).ContinueWith(task =>
         {
-            _results = task.Result;
-            RaiseItemsChanged(_results.Length);
-        });
+            if (task.IsCanceled)
+                return;
+            UpdateResults(task.Result);
+        }, token);
+    }
+
+    private void UpdateResults(IListItem[] results)
+    {
+        lock (_resultsLock)
+        {
+            _results = results;
+        }
+        RaiseItemsChanged(_results.Length);
     }
 
     // Search scoop
-    public async Task<IListItem[]> SearchScoopAsync(string searchText)
+    public async Task<IListItem[]> SearchScoopAsync(string searchText, CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(searchText))
         {
@@ -73,72 +97,89 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
         try
         {
             IsLoading = true;
-            var results = await _scoop.SearchAsync(searchText);
+            cancellationToken.ThrowIfCancellationRequested();
+            var results = await _scoop.SearchAsync(searchText).WaitAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            return await Task.WhenAll([.. results.Select(async result => new ListItem(new InstallCommand(_scoop, result))
-            {
-                Title = result.Name,
-                Subtitle = result.Description,
-                Tags = [
-                    ..result.Metadata.OfficialRepository ? [new Tag() {
-                        Text = await _scoop.GetBucketNameFromRepoAsync(result.Metadata.Repository),
-                        Icon = IconHelpers.FromRelativePath("Assets\\icon_checkmark.svg"),
-                    }] : Array.Empty<Tag>(),
-                    new Tag() {
-                        Text = result.Version,
-                        ToolTip = "Version",
-                    }
-                ],
-                Icon = new IconInfo($"https://www.google.com/s2/favicons?domain={Uri.EscapeDataString(result.Homepage)}&sz=24"),
-                Details = new Details() {
-                    Title = result.Name,
-                    Body = result.Notes,
-                    Metadata = [
-                        new DetailsElement() {
-                            Key = "Repository",
-                            Data = new DetailsLink() {
-                                Text = result.Metadata.OfficialRepository ? await _scoop.GetBucketNameFromRepoAsync(result.Metadata.Repository) : result.Metadata.Repository,
-                                Link = new Uri(result.Metadata.Repository),
+            return await Task.WhenAll([
+                .. results.Select(async result =>
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return new ListItem(new InstallCommand(_scoop, result))
+                    {
+                        Title = result.Name,
+                        Subtitle = result.Description,
+                        Tags = [
+                            ..result.Metadata.OfficialRepository ? [new Tag() {
+                                Text = await _scoop.GetBucketNameFromRepoAsync(result.Metadata.Repository).WaitAsync(cancellationToken),
+                                Icon = IconHelpers.FromRelativePath("Assets\\icon_checkmark.svg"),
+                            }] : Array.Empty<Tag>(),
+                            new Tag() {
+                                Text = result.Version,
+                                ToolTip = "Version",
                             }
-                        },
-                        new DetailsElement() {
-                            Key = "File path",
-                            Data = new DetailsLink() {
-                                Text = result.Metadata.FilePath,
-                                Link = new Uri($"{result.Metadata.Repository}/blob/{result.Metadata.Sha}/{result.Metadata.FilePath}"),
-                            }
-                        },
-                        new DetailsElement() {
-                            Key = "Homepage",
-                            Data = new DetailsLink() {
-                                Text = result.Homepage,
-                                Link = new Uri(result.Homepage),
-                            }
-                        },
-                        // Only add License tag if result.License is not null or empty
-                        ..(string.IsNullOrEmpty(result.License) ? Array.Empty<DetailsElement>() : [
-                            new DetailsElement() {
-                                Key = "License",
-                                Data = new DetailsLink() {
-                                    Text = result.License,
-                                    Link = !result.License.Contains(',') ? new Uri($"https://spdx.org/licenses/{result.License}.html") : null,
-                                }
-                            }
-                        ]),
-                    ]
-                }
-            })]);
+                        ],
+                        Icon = new IconInfo($"https://www.google.com/s2/favicons?domain={Uri.EscapeDataString(result.Homepage)}&sz=24"),
+                        Details = new Details() {
+                            Title = result.Name,
+                            Body = result.Notes,
+                            Metadata = [
+                                new DetailsElement() {
+                                    Key = "Repository",
+                                    Data = new DetailsLink() {
+                                        Text = result.Metadata.OfficialRepository ? await _scoop.GetBucketNameFromRepoAsync(result.Metadata.Repository).WaitAsync(cancellationToken) : result.Metadata.Repository,
+                                        Link = new Uri(result.Metadata.Repository),
+                                    }
+                                },
+                                new DetailsElement() {
+                                    Key = "File path",
+                                    Data = new DetailsLink() {
+                                        Text = result.Metadata.FilePath,
+                                        Link = new Uri($"{result.Metadata.Repository}/blob/{result.Metadata.Sha}/{result.Metadata.FilePath}"),
+                                    }
+                                },
+                                new DetailsElement() {
+                                    Key = "Homepage",
+                                    Data = new DetailsLink() {
+                                        Text = result.Homepage,
+                                        Link = new Uri(result.Homepage),
+                                    }
+                                },
+                                // Only add License tag if result.License is not null or empty
+                                ..(string.IsNullOrEmpty(result.License) ? Array.Empty<DetailsElement>() : [
+                                    new DetailsElement() {
+                                        Key = "License",
+                                        Data = new DetailsLink() {
+                                            Text = result.License,
+                                            Link = !result.License.Contains(',') ? new Uri($"https://spdx.org/licenses/{result.License}.html") : null,
+                                        }
+                                    }
+                                ]),
+                            ]
+                        }
+                    };
+                })
+            ]);
+        }
+        catch (OperationCanceledException)
+        {
+            Debug.WriteLine($"Scoop search cancelled for: {searchText}");
+            return [];
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Error searching Scoop: {ex.Message}");
+            ToastStatusMessage toast = new(new StatusMessage
+            {
+                Message = $"Error searching Scoop: {ex.Message}",
+                State = MessageState.Error,
+            });
             return [];
         }
         finally
         {
             IsLoading = false;
         }
-
     }
 
     internal partial class InstallCommand : InvokableCommand
