@@ -12,7 +12,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage
         private readonly ScoopSearchResultItem _package;
         public InstallCommand(Scoop scoop, ScoopSearchResultItem package)
         {
-            Name = "Install";
+            Name = Properties.Resources.InstallCommand;
             Icon = new("\uEBD3");
             _scoop = scoop;
             _package = package;
@@ -23,7 +23,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage
             ProgressState progressState = new() { IsIndeterminate = false, ProgressPercent = 10 };
             ToastStatusMessage toast = new(new StatusMessage
             {
-                Message = $"Checking bucket before installation...",
+                Message = Properties.Resources.InstallProgressCheck,
                 State = MessageState.Info,
                 Progress = progressState,
             })
@@ -39,7 +39,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage
             {
                 ScoopBucket? bucket = _scoop.GetInstalledBucketFromSource(repository);
                 progressState.ProgressPercent = 25;
-                toast.Message.Message = $"Updating Scoop...";
+                toast.Message.Message = Properties.Resources.InstallProgressUpdate;
                 _scoop.UpdateAsync().Wait();
                 progressState.ProgressPercent = 50;
 

@@ -121,21 +121,21 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
                             Body = result.Notes,
                             Metadata = [
                                 new DetailsElement() {
-                                    Key = "Repository",
+                                    Key = Properties.Resources.PackageMetadataRepository,
                                     Data = new DetailsLink() {
                                         Text = result.Metadata.OfficialRepository ? await _scoop.GetBucketNameFromRepoAsync(result.Metadata.Repository).WaitAsync(cancellationToken) : result.Metadata.Repository,
                                         Link = new Uri(result.Metadata.Repository),
                                     }
                                 },
                                 new DetailsElement() {
-                                    Key = "File path",
+                                    Key = Properties.Resources.PackageMetadataFilePath,
                                     Data = new DetailsLink() {
                                         Text = result.Metadata.FilePath,
                                         Link = new Uri($"{result.Metadata.Repository}/blob/{result.Metadata.Sha}/{result.Metadata.FilePath}"),
                                     }
                                 },
                                 new DetailsElement() {
-                                    Key = "Homepage",
+                                    Key = Properties.Resources.PackageMetadataHomepage,
                                     Data = new DetailsLink() {
                                         Text = result.Homepage,
                                         Link = new Uri(result.Homepage),
@@ -144,7 +144,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
                                 // Only add License tag if result.License is not null or empty
                                 ..(string.IsNullOrEmpty(result.License) ? Array.Empty<DetailsElement>() : [
                                     new DetailsElement() {
-                                        Key = "License",
+                                        Key = Properties.Resources.PackageMetadataLicense,
                                         Data = new DetailsLink() {
                                             Text = result.License,
                                             Link = !result.License.Contains(',') ? new Uri($"https://spdx.org/licenses/{result.License}.html") : null,
