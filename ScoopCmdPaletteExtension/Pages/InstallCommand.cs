@@ -37,10 +37,10 @@ internal sealed partial class ScoopCmdPaletteExtensionPage
             string fullPath = new Uri(new Uri(repository), filePath).ToString();
             try
             {
-                ScoopBucket? bucket = _scoop.GetInstalledBucketFromSource(repository);
+                ScoopBucket? bucket = Scoop.GetInstalledBucketFromSource(repository);
                 progressState.ProgressPercent = 25;
                 toast.Message.Message = Properties.Resources.InstallProgressUpdate;
-                _scoop.UpdateAsync().Wait();
+                Scoop.UpdateAsync().Wait();
                 progressState.ProgressPercent = 50;
 
                 if (bucket != null)
@@ -95,7 +95,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage
             toast.Show();
             try
             {
-                _scoop.InstallAsync(packageName).Wait();
+                Scoop.InstallAsync(packageName).Wait();
                 toast.Message.Message = $"Package \"{packageName}\" installed successfully.";
                 toast.Message.State = MessageState.Success;
                 toast.Message.Progress = new ProgressState { IsIndeterminate = false, ProgressPercent = 100 };

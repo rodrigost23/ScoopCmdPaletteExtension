@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ScoopCmdPaletteExtension
@@ -83,8 +84,22 @@ namespace ScoopCmdPaletteExtension
             return searchResult.Value;
         }
 
-        public static async Task<(string stdout, string stderr)> RunCommandAsync(string args)
+        public record CommandResult
         {
+            public string Stdout { get; init; } = "";
+            public string Stderr { get; init; } = "";
+            public JsonDocument? Json { get; init; }
+        }
+
+        public static async Task<CommandResult> RunCommandAsync(string args, bool jsonOutput = false, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (jsonOutput)
+            {
+                args += " | ConvertTo-Json -Depth 3";
+            }
+
             var startInfo = new ProcessStartInfo
             {
                 FileName = "powershell",
@@ -122,38 +137,30 @@ namespace ScoopCmdPaletteExtension
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
-            await process.WaitForExitAsync();
+            await process.WaitForExitAsync(cancellationToken);
 
             if (process.ExitCode != 0)
             {
                 throw new InvalidOperationException($"Scoop command failed with exit code {process.ExitCode}. Stderr: {string.Join('\n', stderrBuffer)}");
             }
 
-            return (string.Join('\n', stdoutBuffer), string.Join('\n', stderrBuffer));
-        }
-
-        public ScoopBucket[] GetBuckets()
-        {
-            var psi = new ProcessStartInfo
+            return new CommandResult
             {
-                FileName = "powershell",
-                Arguments = "-Command \"scoop bucket list | ConvertTo-Json -Depth 3\"",
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
+                Stdout = string.Join('\n', stdoutBuffer),
+                Stderr = string.Join('\n', stderrBuffer),
+                Json = jsonOutput
+                    ? JsonDocument.Parse(string.Join('\n', stdoutBuffer))
+                    : null
             };
-
-            using var process = Process.Start(psi);
-            string? output = process?.StandardOutput.ReadToEnd();
-            process?.WaitForExit();
-
-            // Deserialize JSON output
-            var buckets = output != null ? JsonSerializer.Deserialize(output, ScoopJsonContext.Default.ScoopBucketArray) : null;
-
-            return buckets ?? [];
         }
 
-        public ScoopBucket? GetInstalledBucketFromSource(string source)
+        public static ScoopBucket[] GetBuckets()
+        {
+            var output = RunCommandAsync("bucket list", jsonOutput: true).GetAwaiter().GetResult();
+            return output.Json?.Deserialize(ScoopJsonContext.Default.ScoopBucketArray) ?? [];
+        }
+
+        public static ScoopBucket? GetInstalledBucketFromSource(string source)
         {
             ScoopBucket[] buckets = GetBuckets();
             foreach (var bucket in buckets)
@@ -195,7 +202,7 @@ namespace ScoopCmdPaletteExtension
             throw new ArgumentException("Invalid repository URL format.", nameof(repository));
         }
 
-        public async Task UpdateAsync()
+        public static async Task UpdateAsync()
         {
             await RunCommandAsync("update");
         }
@@ -209,7 +216,7 @@ namespace ScoopCmdPaletteExtension
             await RunCommandAsync($"bucket add {installParam}");
         }
 
-        public async Task InstallAsync(string packageName)
+        public static async Task InstallAsync(string packageName)
         {
             await RunCommandAsync($"install {packageName}");
         }
