@@ -18,10 +18,14 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
 
     public ScoopCmdPaletteExtensionPage()
     {
-        Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
+        Icon = IconHelpers.FromRelativePath("Assets\\ice_cream_emoji.svg");
         Title = "Scoop";
         Name = "Search";
         ShowDetails = true;
+        EmptyContent = new CommandItem() {
+            Title = "Try searching for a Scoop package.",
+            Icon = IconHelpers.FromRelativePath("Assets\\ice_cream_emoji.svg"),
+        };
     }
 
     public void Dispose()
@@ -31,12 +35,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
 
     public override IListItem[] GetItems()
     {
-        return _results.Length > 0 ? _results : [
-            new ListItem(new OpenUrlCommand("https://scoop.sh"))
-                {
-                    Title = "Open Scoop home page",
-                }
-        ];
+        return _results;
     }
 
     public override void UpdateSearchText(string oldSearch, string newSearch)
