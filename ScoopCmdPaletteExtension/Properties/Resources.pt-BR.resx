@@ -126,6 +126,12 @@
   <data name="InstallProgressUpdate" xml:space="preserve">
     <value>Atualizando o Scoop...</value>
   </data>
+  <data name="MsgNoResultsFound" xml:space="preserve">
+    <value>Nenhum resultado encontrado para "{0}".</value>
+  </data>
+  <data name="OpenScoopHomepage" xml:space="preserve">
+    <value>Abrir página web do Scoop</value>
+  </data>
   <data name="PackageMetadataFilePath" xml:space="preserve">
     <value>Caminho do arquivo</value>
   </data>
@@ -137,5 +143,14 @@
   </data>
   <data name="PackageMetadataRepository" xml:space="preserve">
     <value>Repositório</value>
+  </data>
+  <data name="TitleManageApps" xml:space="preserve">
+    <value>Listar aplicativos</value>
+  </data>
+  <data name="TitleManageBuckets" xml:space="preserve">
+    <value>Gerenciar buckets</value>
+  </data>
+  <data name="TitleScoopSearch" xml:space="preserve">
+    <value>Pesquisar Scoop</value>
   </data>
 </root>

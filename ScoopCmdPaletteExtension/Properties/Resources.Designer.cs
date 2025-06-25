@@ -88,6 +88,24 @@ namespace ScoopCmdPaletteExtension.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to No results found for &quot;{0}&quot;..
+        /// </summary>
+        internal static string MsgNoResultsFound {
+            get {
+                return ResourceManager.GetString("MsgNoResultsFound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Open Scoop Homepage.
+        /// </summary>
+        internal static string OpenScoopHomepage {
+            get {
+                return ResourceManager.GetString("OpenScoopHomepage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to File path.
         /// </summary>
         internal static string PackageMetadataFilePath {
@@ -120,6 +138,33 @@ namespace ScoopCmdPaletteExtension.Properties {
         internal static string PackageMetadataRepository {
             get {
                 return ResourceManager.GetString("PackageMetadataRepository", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to List all apps.
+        /// </summary>
+        internal static string TitleManageApps {
+            get {
+                return ResourceManager.GetString("TitleManageApps", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Manage Buckets.
+        /// </summary>
+        internal static string TitleManageBuckets {
+            get {
+                return ResourceManager.GetString("TitleManageBuckets", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scoop Search.
+        /// </summary>
+        internal static string TitleScoopSearch {
+            get {
+                return ResourceManager.GetString("TitleScoopSearch", resourceCulture);
             }
         }
     }

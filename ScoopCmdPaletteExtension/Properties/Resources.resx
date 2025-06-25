@@ -126,6 +126,12 @@
   <data name="InstallProgressUpdate" xml:space="preserve">
     <value>Updating Scoop...</value>
   </data>
+  <data name="MsgNoResultsFound" xml:space="preserve">
+    <value>No results found for "{0}".</value>
+  </data>
+  <data name="OpenScoopHomepage" xml:space="preserve">
+    <value>Open Scoop Homepage</value>
+  </data>
   <data name="PackageMetadataFilePath" xml:space="preserve">
     <value>File path</value>
   </data>
@@ -137,5 +143,14 @@
   </data>
   <data name="PackageMetadataRepository" xml:space="preserve">
     <value>Repository</value>
+  </data>
+  <data name="TitleManageApps" xml:space="preserve">
+    <value>List all apps</value>
+  </data>
+  <data name="TitleManageBuckets" xml:space="preserve">
+    <value>Manage Buckets</value>
+  </data>
+  <data name="TitleScoopSearch" xml:space="preserve">
+    <value>Scoop Search</value>
   </data>
 </root>

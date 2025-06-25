@@ -2,7 +2,9 @@ using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,10 +13,13 @@ namespace ScoopCmdPaletteExtension;
 internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, IDisposable
 {
     private readonly Scoop _scoop = new();
+    private string _currentSearchText = string.Empty;
     private IListItem[] _results = [];
     private readonly Lock _resultsLock = new();
     private CancellationTokenSource? _searchCancellationTokenSource;
     IconInfo ScoopIcon { get; } = IconHelpers.FromRelativePath("Assets\\ice_cream_emoji.svg");
+    private static readonly CompositeFormat MsgNoResultsFound = CompositeFormat.Parse(Properties.Resources.MsgNoResultsFound);
+
 
     public ScoopCmdPaletteExtensionPage()
     {
@@ -22,11 +27,6 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
         Title = "Scoop";
         Name = "Search";
         ShowDetails = true;
-        EmptyContent = new CommandItem()
-        {
-            Title = "Try searching for a Scoop package.",
-            Icon = ScoopIcon,
-        };
     }
 
     public void Dispose()
@@ -39,7 +39,20 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
     {
         lock (_resultsLock)
         {
-            return _results;
+            return _currentSearchText.Length > 0 ? _results : [
+                new ListItem(new ManageBucketsPage()) {
+                    Title = Properties.Resources.TitleManageBuckets,
+                    Icon = new IconInfo("\uE74C"),
+                },
+                new ListItem {
+                    Title = Properties.Resources.TitleManageApps,
+                    Icon = new IconInfo("\uE71D"),
+                },
+                new ListItem {
+                   Title = Properties.Resources.OpenScoopHomepage,
+                   Command = new OpenUrlCommand("https://scoop.sh/"),
+                }
+            ];
         }
     }
 
@@ -53,6 +66,17 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
         }
 
         _searchCancellationTokenSource?.Cancel();
+
+        lock (_resultsLock)
+        {
+            _currentSearchText = newSearch;
+            EmptyContent = new CommandItem()
+            {
+                Title = Properties.Resources.TitleScoopSearch,
+                Subtitle = string.Format(CultureInfo.CurrentCulture, MsgNoResultsFound, newSearch),
+                Icon = ScoopIcon,
+            };
+        }
 
         if (string.IsNullOrEmpty(newSearch))
         {
