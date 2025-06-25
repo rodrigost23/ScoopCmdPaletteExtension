@@ -1,0 +1,72 @@
+name: Build
+on:
+  pull_request:
+  push:
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        configuration: [Release]
+        platform: [x64, arm64]
+        os: [windows-latest, windows-11-arm]
+        exclude:
+          - os: windows-latest
+            platform: arm64
+          - os: windows-11-arm
+            platform: x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ matrix.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ matrix.os }}-nuget-
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Restore packages
+        run: msbuild ScoopCmdPaletteExtension.sln /t:Restore /p:Configuration=Release
+
+      - name: Build extension
+        run: >
+          msbuild ScoopCmdPaletteExtension\ScoopCmdPaletteExtension.csproj
+          /p:Configuration=Release
+          /p:GenerateAppxPackageOnBuild=true
+          /p:Platform=${{ matrix.platform }}
+
+      - name: Prepare artifact
+        id: find-msix
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path build -Force
+          $msix = Get-ChildItem -Path ScoopCmdPaletteExtension\bin\${{ matrix.platform }} -Recurse -Include *.msix |
+            Where-Object { $_.FullName -notmatch "\\Dependencies\\" } |
+            Select-Object -First 1
+          if ($null -eq $msix) { throw "No MSIX file found." }
+          Copy-Item -Path $msix.FullName -Destination build
+          echo "msix_name=$($msix.Name)" >> $env:GITHUB_OUTPUT
+
+      - name: Upload MSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.find-msix.outputs.msix_name }}
+          path: build\${{ steps.find-msix.outputs.msix_name }}
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/${{ steps.find-msix.outputs.msix_name }}
