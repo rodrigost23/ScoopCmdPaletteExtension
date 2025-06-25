@@ -10,42 +10,44 @@ internal sealed partial class ScoopCmdPaletteExtensionPage
     {
         private readonly Scoop _scoop;
         private readonly ScoopSearchResultItem _package;
+        private readonly ProgressState _progressState = new() { IsIndeterminate = false, ProgressPercent = 10 };
+        private readonly ToastStatusMessage _toast;
         public InstallCommand(Scoop scoop, ScoopSearchResultItem package)
         {
             Name = Properties.Resources.InstallCommand;
             Icon = new("\uEBD3");
             _scoop = scoop;
             _package = package;
-        }
-
-        public override ICommandResult Invoke()
-        {
-            ProgressState progressState = new() { IsIndeterminate = false, ProgressPercent = 10 };
-            ToastStatusMessage toast = new(new StatusMessage
+            _toast = new(new StatusMessage
             {
                 Message = Properties.Resources.InstallProgressCheck,
                 State = MessageState.Info,
-                Progress = progressState,
+                Progress = _progressState,
             })
             {
                 Duration = -1,
             };
-            toast.Show();
+        }
+
+        public override ICommandResult Invoke()
+        {
+
+            _toast.Show();
             string pkg = _package.Name;
             string repository = _package.Metadata.Repository;
             string filePath = _package.Metadata.FilePath;
             string fullPath = new Uri(new Uri(repository), filePath).ToString();
             try
             {
-                ScoopBucket? bucket = Scoop.GetInstalledBucketFromSource(repository);
-                progressState.ProgressPercent = 25;
-                toast.Message.Message = Properties.Resources.InstallProgressUpdate;
+                ScoopBucket? bucket = Scoop.GetInstalledBucketFromSourceAsync(repository).GetAwaiter().GetResult();
+                _progressState.ProgressPercent = 25;
+                _toast.Message.Message = Properties.Resources.InstallProgressUpdate;
                 Scoop.UpdateAsync().Wait();
-                progressState.ProgressPercent = 50;
+                _progressState.ProgressPercent = 50;
 
                 if (bucket != null)
                 {
-                    DoInstall(toast, $"{bucket.Name}/{pkg}");
+                    DoInstall($"{bucket.Name}/{pkg}");
                     return CommandResult.KeepOpen();
                 }
 
@@ -56,19 +58,19 @@ internal sealed partial class ScoopCmdPaletteExtensionPage
                     Description = $"Do you want to install it from the repository \"{repository}\"?",
                     PrimaryCommand = new AnonymousCommand(() =>
                     {
-                        toast.Message.Message = $"Installing bucket \"{bucketName}\" from repository \"{repository}\"...";
-                        toast.Show();
+                        _toast.Message.Message = $"Installing bucket \"{bucketName}\" from repository \"{repository}\"...";
+                        _toast.Show();
                         try
                         {
                             _scoop.InstallBucketAsync(repository, bucketName).Wait();
-                            progressState.ProgressPercent = 75;
-                            DoInstall(toast, $"{bucketName}/{pkg}");
+                            _progressState.ProgressPercent = 75;
+                            DoInstall($"{bucketName}/{pkg}");
                         }
                         catch (Exception ex)
                         {
-                            toast.Message.State = MessageState.Error;
-                            toast.Message.Message = ex.Message;
-                            toast.Show();
+                            _toast.Message.State = MessageState.Error;
+                            _toast.Message.Message = ex.Message;
+                            _toast.Show();
                         }
                     })
                     {
@@ -80,32 +82,32 @@ internal sealed partial class ScoopCmdPaletteExtensionPage
             }
             catch (Exception ex)
             {
-                toast.Message.State = MessageState.Error;
-                toast.Message.Message = ex.Message;
-                toast.Show();
+                _toast.Message.State = MessageState.Error;
+                _toast.Message.Message = ex.Message;
+                _toast.Show();
                 return CommandResult.KeepOpen();
             }
         }
 
-        private void DoInstall(ToastStatusMessage toast, string packageName)
+        private void DoInstall(string packageName)
         {
-            toast.Message.Message = $"Installing package \"{packageName}\"...";
-            toast.Message.State = MessageState.Info;
-            toast.Message.Progress = new ProgressState { IsIndeterminate = true };
-            toast.Show();
+            _toast.Message.Message = $"Installing package \"{packageName}\"...";
+            _toast.Message.State = MessageState.Info;
+            _toast.Message.Progress = new ProgressState { IsIndeterminate = true };
+            _toast.Show();
             try
             {
                 Scoop.InstallAsync(packageName).Wait();
-                toast.Message.Message = $"Package \"{packageName}\" installed successfully.";
-                toast.Message.State = MessageState.Success;
-                toast.Message.Progress = new ProgressState { IsIndeterminate = false, ProgressPercent = 100 };
-                toast.Show();
+                _toast.Message.Message = $"Package \"{packageName}\" installed successfully.";
+                _toast.Message.State = MessageState.Success;
+                _toast.Message.Progress = new ProgressState { IsIndeterminate = false, ProgressPercent = 100 };
+                _toast.Show();
             }
             catch (Exception ex)
             {
-                toast.Message.State = MessageState.Error;
-                toast.Message.Message = $"Error installing package \"{packageName}\": {ex.Message}";
-                toast.Show();
+                _toast.Message.State = MessageState.Error;
+                _toast.Message.Message = $"Error installing package \"{packageName}\": {ex.Message}";
+                _toast.Show();
                 return;
             }
         }

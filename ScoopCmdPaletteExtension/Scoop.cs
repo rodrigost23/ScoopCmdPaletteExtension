@@ -49,17 +49,17 @@ namespace ScoopCmdPaletteExtension
             return _apiKey;
         }
 
-        public async Task<Dictionary<string, string>> GetOfficialBucketsAsync()
+        public async Task<Dictionary<string, string>> GetOfficialBucketsAsync(CancellationToken cancellationToken = default)
         {
             const string BUCKETS_JSON_URL = "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/buckets.json";
-            using var response = await _httpClient.GetAsync(BUCKETS_JSON_URL);
+            using var response = await _httpClient.GetAsync(BUCKETS_JSON_URL, cancellationToken);
             response.EnsureSuccessStatusCode();
-            var stream = await response.Content.ReadAsStreamAsync();
-            return JsonSerializer.Deserialize(stream, ScoopJsonContext.Default.DictionaryStringString)
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            return await JsonSerializer.DeserializeAsync(stream, ScoopJsonContext.Default.DictionaryStringString, cancellationToken)
                 ?? throw new InvalidOperationException("Failed to deserialize official buckets.");
         }
 
-        public async Task<ScoopSearchResultItem[]> SearchAsync(string query)
+        public async Task<ScoopSearchResultItem[]> SearchAsync(string query, CancellationToken cancellationToken = default)
         {
             string apiKey = await GetApiKey() ?? throw new InvalidOperationException("API key could not be retrieved.");
 
@@ -70,18 +70,13 @@ namespace ScoopCmdPaletteExtension
 
             request.Headers.Add("api-key", apiKey);
 
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(request, cancellationToken);
 
             response.EnsureSuccessStatusCode();
 
-            var searchResult = await response.Content.ReadFromJsonAsync<ScoopSearchResult>(ScoopJsonContext.Default.ScoopSearchResult);
+            ScoopSearchResult? searchResult = await response.Content.ReadFromJsonAsync(ScoopJsonContext.Default.ScoopSearchResult, cancellationToken);
 
-            if (searchResult == null || searchResult.Value == null)
-            {
-                return [];
-            }
-
-            return searchResult.Value;
+            return searchResult?.Value ?? [];
         }
 
         public record CommandResult
@@ -154,15 +149,15 @@ namespace ScoopCmdPaletteExtension
             };
         }
 
-        public static ScoopBucket[] GetBuckets()
+        public async static Task<ScoopBucket[]> GetBucketsAsync(CancellationToken cancellationToken = default)
         {
-            var output = RunCommandAsync("bucket list", jsonOutput: true).GetAwaiter().GetResult();
+            var output = await RunCommandAsync("bucket list", jsonOutput: true, cancellationToken);
             return output.Json?.Deserialize(ScoopJsonContext.Default.ScoopBucketArray) ?? [];
         }
 
-        public static ScoopBucket? GetInstalledBucketFromSource(string source)
+        public async static Task<ScoopBucket?> GetInstalledBucketFromSourceAsync(string source, CancellationToken cancellationToken = default)
         {
-            ScoopBucket[] buckets = GetBuckets();
+            ScoopBucket[] buckets = await GetBucketsAsync(cancellationToken);
             foreach (var bucket in buckets)
             {
                 if (bucket.Source.Equals(source, StringComparison.OrdinalIgnoreCase))
@@ -174,10 +169,10 @@ namespace ScoopCmdPaletteExtension
             return null;
         }
 
-        public async Task<string> GetBucketNameFromRepoAsync(string repository)
+        public async Task<string> GetBucketNameFromRepoAsync(string repository, CancellationToken cancellationToken = default)
         {
             // Check if repository is in official bucket list and return
-            var officialBuckets = await GetOfficialBucketsAsync();
+            var officialBuckets = await GetOfficialBucketsAsync(cancellationToken);
 
             foreach (var kvp in officialBuckets)
             {
@@ -202,23 +197,23 @@ namespace ScoopCmdPaletteExtension
             throw new ArgumentException("Invalid repository URL format.", nameof(repository));
         }
 
-        public static async Task UpdateAsync()
+        public static async Task UpdateAsync(CancellationToken cancellationToken = default)
         {
-            await RunCommandAsync("update");
+            await RunCommandAsync("update", cancellationToken: cancellationToken);
         }
 
-        public async Task InstallBucketAsync(string repository, string? name = null)
+        public async Task InstallBucketAsync(string repository, string? name = null, CancellationToken cancellationToken = default)
         {
-            name ??= await GetBucketNameFromRepoAsync(repository);
+            name ??= await GetBucketNameFromRepoAsync(repository, cancellationToken);
 
-            var officialBuckets = await GetOfficialBucketsAsync();
+            var officialBuckets = await GetOfficialBucketsAsync(cancellationToken);
             string installParam = officialBuckets.ContainsKey(name) ? name : $"{name} {repository}";
-            await RunCommandAsync($"bucket add {installParam}");
+            await RunCommandAsync($"bucket add {installParam}", cancellationToken: cancellationToken);
         }
 
-        public static async Task InstallAsync(string packageName)
+        public static async Task InstallAsync(string packageName, CancellationToken cancellationToken = default)
         {
-            await RunCommandAsync($"install {packageName}");
+            await RunCommandAsync($"install {packageName}", cancellationToken: cancellationToken);
         }
     }
 

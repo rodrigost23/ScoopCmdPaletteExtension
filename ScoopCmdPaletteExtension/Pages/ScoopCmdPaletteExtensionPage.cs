@@ -94,7 +94,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
         {
             IsLoading = true;
             cancellationToken.ThrowIfCancellationRequested();
-            var results = await _scoop.SearchAsync(searchText).WaitAsync(cancellationToken);
+            var results = await _scoop.SearchAsync(searchText, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
 
             return await Task.WhenAll([
@@ -159,12 +159,12 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
         }
         catch (OperationCanceledException)
         {
-            Debug.WriteLine($"Scoop search cancelled for: {searchText}");
+            Debug.WriteLine($"Scoop search cancelled for: {searchText}", cancellationToken);
             return [];
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error searching Scoop: {ex.Message}");
+            Debug.WriteLine($"Error searching Scoop: {ex.Message}", cancellationToken);
             ToastStatusMessage toast = new(new StatusMessage
             {
                 Message = $"Error searching Scoop: {ex.Message}",
