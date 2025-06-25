@@ -4,7 +4,7 @@ using System;
 
 namespace ScoopCmdPaletteExtension;
 
-internal sealed partial class ScoopCmdPaletteExtensionPage
+internal sealed partial class MainPage
 {
     internal partial class InstallCommand : InvokableCommand
     {

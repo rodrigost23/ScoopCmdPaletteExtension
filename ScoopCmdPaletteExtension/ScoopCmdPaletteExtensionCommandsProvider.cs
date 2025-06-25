@@ -16,7 +16,7 @@ public partial class ScoopCmdPaletteExtensionCommandsProvider : CommandProvider
         DisplayName = "Scoop";
         Icon = IconHelpers.FromRelativePath("Assets\\StoreLogo.png");
         _commands = [
-            new CommandItem(new ScoopCmdPaletteExtensionPage()) { Title = DisplayName },
+            new CommandItem(new MainPage()) { Title = DisplayName },
         ];
     }
 

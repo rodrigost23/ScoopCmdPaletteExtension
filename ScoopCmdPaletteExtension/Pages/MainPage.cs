@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace ScoopCmdPaletteExtension;
 
-internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, IDisposable
+internal sealed partial class MainPage : DynamicListPage, IDisposable
 {
     private readonly Scoop _scoop = new();
     private string _currentSearchText = string.Empty;
@@ -21,7 +21,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
     private static readonly CompositeFormat MsgNoResultsFound = CompositeFormat.Parse(Properties.Resources.MsgNoResultsFound);
 
 
-    public ScoopCmdPaletteExtensionPage()
+    public MainPage()
     {
         Icon = ScoopIcon;
         Title = "Scoop";
@@ -44,7 +44,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
                     Title = Properties.Resources.TitleManageBuckets,
                     Icon = new IconInfo("\uE74C"),
                 },
-                new ListItem {
+                new ListItem(new ManageAppsPage()) {
                     Title = Properties.Resources.TitleManageApps,
                     Icon = new IconInfo("\uE71D"),
                 },
@@ -139,7 +139,7 @@ internal sealed partial class ScoopCmdPaletteExtensionPage : DynamicListPage, ID
                                 ToolTip = "Version",
                             }
                         ],
-                        Icon = new IconInfo($"https://www.google.com/s2/favicons?domain={Uri.EscapeDataString(result.Homepage)}&sz=24"),
+                        Icon = Helpers.GetFavicon(result.Homepage),
                         Details = new Details() {
                             Title = result.Name,
                             Body = result.Notes,

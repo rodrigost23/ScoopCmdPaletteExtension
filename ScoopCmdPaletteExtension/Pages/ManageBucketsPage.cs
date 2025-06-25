@@ -16,10 +16,6 @@ namespace ScoopCmdPaletteExtension
         public override IListItem[] GetItems()
         {
             ScoopBucket[] buckets = Scoop.GetBucketsAsync().GetAwaiter().GetResult() ?? [];
-            //if (buckets.Length == 0)
-            //{
-            //    return [new ListItem(Properties.Resources.MsgNoBucketsFound)];
-            //}
             IsLoading = false;
             return [.. buckets.Select(bucket => new ListItem(new NoOpCommand())
             {

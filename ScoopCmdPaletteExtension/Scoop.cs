@@ -139,13 +139,30 @@ namespace ScoopCmdPaletteExtension
                 throw new InvalidOperationException($"Scoop command failed with exit code {process.ExitCode}. Stderr: {string.Join('\n', stderrBuffer)}");
             }
 
+            string rawOutput = string.Join('\n', stdoutBuffer);
+            JsonDocument? jsonDocument = null;
+
+            if (jsonOutput)
+            {
+                // Find the start of JSON (first '{' or '[')
+                int jsonStart = rawOutput.IndexOfAny(['{', '[']);
+
+                if (jsonStart < 0)
+                {
+                    throw new InvalidOperationException("JSON start not found in output.");
+                }
+
+                string jsonString = rawOutput.Substring(jsonStart);
+                jsonDocument = jsonOutput
+                    ? JsonDocument.Parse(jsonString)
+                    : null;
+            }
+
             return new CommandResult
             {
-                Stdout = string.Join('\n', stdoutBuffer),
+                Stdout = rawOutput,
                 Stderr = string.Join('\n', stderrBuffer),
-                Json = jsonOutput
-                    ? JsonDocument.Parse(string.Join('\n', stdoutBuffer))
-                    : null
+                Json = jsonDocument,
             };
         }
 
@@ -215,12 +232,31 @@ namespace ScoopCmdPaletteExtension
         {
             await RunCommandAsync($"install {packageName}", cancellationToken: cancellationToken);
         }
+
+        public static async Task<ScoopApp[]> GetInstalledAppsAsync()
+        {
+            var output = await RunCommandAsync("list", jsonOutput: true);
+            if (output.Json == null)
+            {
+                throw new InvalidOperationException("Failed to parse installed apps.");
+            }
+            return output.Json.Deserialize(ScoopJsonContext.Default.ScoopAppArray) ?? [];
+        }
     }
 
     internal class ScoopBucket
     {
         public string Name { get; set; } = string.Empty;
         public string Source { get; set; } = string.Empty;
+    }
+
+    internal class ScoopApp
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Version { get; set; } = string.Empty;
+        public string Source { get; set; } = string.Empty;
+        public string Updated { get; set; } = string.Empty;
+        public string Info { get; set; } = string.Empty;
     }
 
     internal class ScoopSearchPayload
@@ -279,6 +315,7 @@ namespace ScoopCmdPaletteExtension
 
     [JsonSerializable(typeof(ScoopSearchPayload))]
     [JsonSerializable(typeof(ScoopSearchResult))]
+    [JsonSerializable(typeof(ScoopApp[]))]
     [JsonSerializable(typeof(ScoopBucket[]))]
     [JsonSerializable(typeof(Dictionary<string, string>))]
     internal partial class ScoopJsonContext : JsonSerializerContext
