@@ -16,6 +16,9 @@ namespace ScoopCmdPaletteExtension
         private string? _apiKey;
         private const string SEARCH_URL = "https://scoopsearch.search.windows.net/indexes/apps/docs/search?api-version=2020-06-30";
 
+        private InstalledStateCache? _installedStateCache;
+        private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(2);
+
         public void Dispose()
         {
             _httpClient.Dispose();
@@ -166,15 +169,60 @@ namespace ScoopCmdPaletteExtension
             };
         }
 
-        public async static Task<ScoopBucket[]> GetBucketsAsync(CancellationToken cancellationToken = default)
+        private async Task<InstalledStateCache> GetInstalledStateAsync(bool skipCache = false, CancellationToken cancellationToken = default)
         {
-            var output = await RunCommandAsync("bucket list", jsonOutput: true, cancellationToken);
-            return output.Json?.Deserialize(ScoopJsonContext.Default.ScoopBucketArray) ?? [];
+            if (!skipCache && _installedStateCache != null && DateTime.UtcNow - _installedStateCache.Timestamp < _cacheDuration)
+            {
+                return _installedStateCache;
+            }
+
+            var state = await FetchInstalledStateAsync(cancellationToken);
+            _installedStateCache = state;
+            return state;
         }
 
-        public async static Task<ScoopBucket?> GetInstalledBucketFromSourceAsync(string source, CancellationToken cancellationToken = default)
+        private static async Task<InstalledStateCache> FetchInstalledStateAsync(CancellationToken cancellationToken = default)
         {
-            ScoopBucket[] buckets = await GetBucketsAsync(cancellationToken);
+            CommandResult result = await RunCommandAsync("export", cancellationToken: cancellationToken);
+            JsonDocument output = JsonDocument.Parse(result.Stdout);
+
+            if (output.RootElement.ValueKind != JsonValueKind.Object)
+                throw new InvalidOperationException("Exported data is not a valid JSON object.");
+
+            if (!output.RootElement.TryGetProperty("buckets", out var bucketsElement) || bucketsElement.ValueKind != JsonValueKind.Array)
+                throw new InvalidOperationException("Exported data does not contain valid buckets.");
+
+            if (!output.RootElement.TryGetProperty("apps", out var appsElement) || appsElement.ValueKind != JsonValueKind.Array)
+                throw new InvalidOperationException("Exported data does not contain valid apps.");
+
+            var buckets = JsonSerializer.Deserialize(bucketsElement, ScoopJsonContext.Default.ScoopBucketArray)
+                ?? throw new InvalidOperationException("Failed to deserialize buckets.");
+            var apps = JsonSerializer.Deserialize(appsElement, ScoopJsonContext.Default.ScoopAppArray)
+                ?? throw new InvalidOperationException("Failed to deserialize apps.");
+
+            return new InstalledStateCache
+            {
+                Apps = apps,
+                Buckets = buckets,
+                Timestamp = DateTime.UtcNow
+            };
+        }
+
+        public async Task<ScoopBucket[]> GetBucketsAsync(bool skipCache = false, CancellationToken cancellationToken = default)
+        {
+            var state = await GetInstalledStateAsync(skipCache, cancellationToken);
+            return state.Buckets;
+        }
+
+        public async Task<ScoopApp[]> GetInstalledAppsAsync(bool skipCache = false, CancellationToken cancellationToken = default)
+        {
+            var state = await GetInstalledStateAsync(skipCache, cancellationToken);
+            return state.Apps;
+        }
+
+        public async Task<ScoopBucket?> GetInstalledBucketFromSourceAsync(string source, CancellationToken cancellationToken = default)
+        {
+            ScoopBucket[] buckets = await GetBucketsAsync(cancellationToken: cancellationToken);
             foreach (var bucket in buckets)
             {
                 if (bucket.Source.Equals(source, StringComparison.OrdinalIgnoreCase))
@@ -233,14 +281,9 @@ namespace ScoopCmdPaletteExtension
             await RunCommandAsync($"install {packageName}", cancellationToken: cancellationToken);
         }
 
-        public static async Task<ScoopApp[]> GetInstalledAppsAsync()
+        public async Task RefreshCache(CancellationToken cancellationToken = default)
         {
-            var output = await RunCommandAsync("list", jsonOutput: true);
-            if (output.Json == null)
-            {
-                throw new InvalidOperationException("Failed to parse installed apps.");
-            }
-            return output.Json.Deserialize(ScoopJsonContext.Default.ScoopAppArray) ?? [];
+            _installedStateCache = await FetchInstalledStateAsync(cancellationToken);
         }
     }
 
@@ -320,5 +363,12 @@ namespace ScoopCmdPaletteExtension
     [JsonSerializable(typeof(Dictionary<string, string>))]
     internal partial class ScoopJsonContext : JsonSerializerContext
     {
+    }
+
+    internal class InstalledStateCache
+    {
+        public ScoopApp[] Apps { get; set; } = Array.Empty<ScoopApp>();
+        public ScoopBucket[] Buckets { get; set; } = Array.Empty<ScoopBucket>();
+        public DateTime Timestamp { get; set; }
     }
 }

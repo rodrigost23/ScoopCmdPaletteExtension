@@ -39,7 +39,7 @@ internal sealed partial class MainPage
             string fullPath = new Uri(new Uri(repository), filePath).ToString();
             try
             {
-                ScoopBucket? bucket = Scoop.GetInstalledBucketFromSourceAsync(repository).GetAwaiter().GetResult();
+                ScoopBucket? bucket = _scoop.GetInstalledBucketFromSourceAsync(repository).GetAwaiter().GetResult();
                 _progressState.ProgressPercent = 25;
                 _toast.Message.Message = Properties.Resources.InstallProgressUpdate;
                 Scoop.UpdateAsync().Wait();

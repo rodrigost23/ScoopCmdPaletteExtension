@@ -6,16 +6,18 @@ namespace ScoopCmdPaletteExtension
 {
     internal partial class ManageBucketsPage : ListPage
     {
-        public ManageBucketsPage()
+        private readonly Scoop _scoop;
+        public ManageBucketsPage(Scoop scoop)
         {
             IsLoading = true;
             Title = Properties.Resources.TitleManageBuckets;
             Icon = new IconInfo("\uE74C");
+            _scoop = scoop;
         }
 
         public override IListItem[] GetItems()
         {
-            ScoopBucket[] buckets = Scoop.GetBucketsAsync().GetAwaiter().GetResult() ?? [];
+            ScoopBucket[] buckets = _scoop.GetBucketsAsync().GetAwaiter().GetResult() ?? [];
             IsLoading = false;
             return [.. buckets.Select(bucket => new ListItem(new NoOpCommand())
             {

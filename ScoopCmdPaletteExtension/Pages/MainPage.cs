@@ -40,11 +40,11 @@ internal sealed partial class MainPage : DynamicListPage, IDisposable
         lock (_resultsLock)
         {
             return _currentSearchText.Length > 0 ? _results : [
-                new ListItem(new ManageBucketsPage()) {
+                new ListItem(new ManageBucketsPage(_scoop)) {
                     Title = Properties.Resources.TitleManageBuckets,
                     Icon = new IconInfo("\uE74C"),
                 },
-                new ListItem(new ManageAppsPage()) {
+                new ListItem(new ManageAppsPage(_scoop)) {
                     Title = Properties.Resources.TitleManageApps,
                     Icon = new IconInfo("\uE71D"),
                 },

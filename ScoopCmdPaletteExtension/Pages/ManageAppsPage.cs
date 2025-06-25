@@ -7,12 +7,16 @@ namespace ScoopCmdPaletteExtension
 {
     internal partial class ManageAppsPage : ListPage
     {
-        public ManageAppsPage()
+        private readonly Scoop _scoop;
+
+        public ManageAppsPage(Scoop scoop)
         {
             IsLoading = true;
             Title = Properties.Resources.TitleManageApps;
             Icon = new IconInfo("\uE71D");
+            _scoop = scoop;
         }
+
         public override IListItem[] GetItems()
         {
             ScoopApp[] apps = FetchInstalledApps() ?? [];
@@ -26,11 +30,11 @@ namespace ScoopCmdPaletteExtension
             })];
         }
 
-        private static ScoopApp[] FetchInstalledApps()
+        private ScoopApp[] FetchInstalledApps()
         {
             try
             {
-                return Scoop.GetInstalledAppsAsync().GetAwaiter().GetResult();
+                return _scoop.GetInstalledAppsAsync().GetAwaiter().GetResult();
             }
             catch (Exception ex)
             {
