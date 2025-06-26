@@ -9,8 +9,8 @@
   IgnorableNamespaces="uap uap3 rescap">
 
   <Identity
-    Name="ScoopCmdPaletteExtension"
-    Publisher="CN=Rodrigo Tavares"
+    Name="25218RodrigoTavares.ScoopExtensionforCommandPalett"
+    Publisher="CN=5F966C8A-E32A-4CEB-A1F9-58D447AFA39F"
     Version="0.1.0.0" />
 
   <Properties>
