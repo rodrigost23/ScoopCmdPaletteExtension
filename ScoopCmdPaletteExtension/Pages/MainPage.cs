@@ -37,6 +37,16 @@ internal sealed partial class MainPage : DynamicListPage, IDisposable
 
     public override IListItem[] GetItems()
     {
+        if (!Scoop.IsScoopInstalledAsync().GetAwaiter().GetResult())
+        {
+            return [
+                new ListItem {
+                   Title = Properties.Resources.ScoopNotInstalled,
+                   Command = new OpenUrlCommand("https://scoop.sh/"),
+                }
+            ];
+        }
+
         lock (_resultsLock)
         {
             return _currentSearchText.Length > 0 ? _results : [

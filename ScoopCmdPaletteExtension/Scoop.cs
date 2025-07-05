@@ -84,6 +84,7 @@ namespace ScoopCmdPaletteExtension
 
         public record CommandResult
         {
+            public int ExitCode { get; init; }
             public string Stdout { get; init; } = "";
             public string Stderr { get; init; } = "";
             public JsonDocument? Json { get; init; }
@@ -163,10 +164,41 @@ namespace ScoopCmdPaletteExtension
 
             return new CommandResult
             {
+                ExitCode = process.ExitCode,
                 Stdout = rawOutput,
                 Stderr = string.Join('\n', stderrBuffer),
                 Json = jsonDocument,
             };
+        }
+
+        public static async Task<bool> IsScoopInstalledAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "powershell",
+                    Arguments = "-Command \"Get-Command scoop\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = new Process { StartInfo = startInfo };
+
+                process.Start();
+                string output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+                string error = await process.StandardError.ReadToEndAsync(cancellationToken);
+                await process.WaitForExitAsync(cancellationToken);
+
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Scoop is not installed: {ex.Message}");
+                return false;
+            }
         }
 
         private async Task<InstalledStateCache> GetInstalledStateAsync(bool skipCache = false, CancellationToken cancellationToken = default)

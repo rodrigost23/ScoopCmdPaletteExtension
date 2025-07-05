@@ -61,6 +61,15 @@ namespace ScoopCmdPaletteExtension.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Unknown Error. Please report bug: {0}..
+        /// </summary>
+        internal static string ErrorUnknown {
+            get {
+                return ResourceManager.GetString("ErrorUnknown", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Install.
         /// </summary>
         internal static string InstallCommand {
@@ -138,6 +147,15 @@ namespace ScoopCmdPaletteExtension.Properties {
         internal static string PackageMetadataRepository {
             get {
                 return ResourceManager.GetString("PackageMetadataRepository", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Scoop is not installed. Go to scoop.sh for more information..
+        /// </summary>
+        internal static string ScoopNotInstalled {
+            get {
+                return ResourceManager.GetString("ScoopNotInstalled", resourceCulture);
             }
         }
         
