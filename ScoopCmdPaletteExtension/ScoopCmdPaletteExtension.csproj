@@ -84,5 +84,6 @@
     <PublishTrimmed>true</PublishTrimmed>
     <PublishSingleFile>true</PublishSingleFile>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <AppxSymbolPackageEnabled>True</AppxSymbolPackageEnabled>
   </PropertyGroup>
 </Project>

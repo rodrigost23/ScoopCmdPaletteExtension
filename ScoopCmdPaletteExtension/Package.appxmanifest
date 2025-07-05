@@ -11,7 +11,7 @@
   <Identity
     Name="25218RodrigoTavares.ScoopExtensionforCommandPalett"
     Publisher="CN=5F966C8A-E32A-4CEB-A1F9-58D447AFA39F"
-    Version="0.1.0.0" />
+    Version="0.1.1.0" />
 
   <Properties>
     <DisplayName>Scoop Extension for Command Palette</DisplayName>

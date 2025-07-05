@@ -52,21 +52,33 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path build -Force
-          $msix = Get-ChildItem -Path ScoopCmdPaletteExtension\bin\${{ matrix.platform }} -Recurse -Include *.msix |
-            Where-Object { $_.FullName -notmatch "\\Dependencies\\" } |
+          $outputDir = "ScoopCmdPaletteExtension\bin\${{ matrix.platform }}"
+
+          $msix = Get-ChildItem -Path $outputDir -Recurse -Include *.msix |
+          Where-Object { $_.FullName -notmatch "\\Dependencies\\" } |
             Select-Object -First 1
-          if ($null -eq $msix) { throw "No MSIX file found." }
+
+          $msixsym = Get-ChildItem -Path $outputDir -Recurse -Include *.msixsym |
+          Where-Object { $_.FullName -notmatch "\\Dependencies\\" } |
+            Select-Object -First 1
+          
+          $msixBaseName = [System.IO.Path]::GetFileNameWithoutExtension($msix.Name)
           Copy-Item -Path $msix.FullName -Destination build
-          echo "msix_name=$($msix.Name)" >> $env:GITHUB_OUTPUT
+          $appxsymPath = "build\$msixBaseName.appxsym"
+          Copy-Item -Path $msixsym.FullName -Destination $appxsymPath
+
+          echo "msix_base_name=$msixBaseName" >> $env:GITHUB_OUTPUT
 
       - name: Upload MSIX artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.find-msix.outputs.msix_name }}
-          path: build\${{ steps.find-msix.outputs.msix_name }}
+          name: ${{ steps.find-msix.outputs.msix_base_name }}.msixupload
+          path: |
+            build\${{ steps.find-msix.outputs.msix_base_name }}.msix
+            build\${{ steps.find-msix.outputs.msix_base_name }}.appxsym
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/${{ steps.find-msix.outputs.msix_name }}
+          files: build/${{ steps.find-msix.outputs.msix_base_name }}.msix
